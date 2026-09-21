@@ -1,11 +1,11 @@
 import requests
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 from scipy.stats import poisson
 import os
 
-# --- PODACI (Automatski povlači iz GitHub Secrets ili upišite ovdje) ---
+# --- PODACI (Automatski povlači iz GitHub Secrets) ---
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "878979655:AAHF13...") 
 CHAT_ID = "8126476484"
 FOOTBALL_API_KEY = os.environ.get("FOOTBALL_API_KEY", "bceaabab0b964a1...")
@@ -50,61 +50,58 @@ def izracunaj_sve_opcije(forma_a, forma_b):
     vj_x = np.sum(np.diag(matrica))
     vj_2 = np.sum(np.triu(matrica, 1))
     
-    vj_1x = vj_1 + vj_x
-    vj_x2 = vj_x + vj_2
-    vj_12 = vj_1 + vj_2
-    
     return {
         "1": round(vj_1 * 100, 1),
         "X": round(vj_x * 100, 1),
         "2": round(vj_2 * 100, 1),
-        "1X": round(vj_1x * 100, 1),
-        "X2": round(vj_x2 * 100, 1),
-        "12": round(vj_12 * 100, 1),
         "Over_2_5": round(vj_vise_2_5 * 100, 1),
         "Under_2_5": round(vj_manje_2_5 * 100, 1)
     }
 
 def dohvati_utakmice_i_analiziraj():
-    url = "https://api.football-data.org/v4/matches"
+    # Automatski postavlja raspon od danas do sutra
+    danas = datetime.now().strftime('%Y-%m-%d')
+    sutra = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+    
+    url = f"https://api.football-data.org/v4/matches?dateFrom={danas}&dateTo={sutra}"
     headers = {"X-Auth-Token": FOOTBALL_API_KEY}
     
     try:
         response = requests.get(url, headers=headers)
         if response.status_code != 200:
-            posalji_telegram_poruku(f"Greška pri dohvaćanju utakmica s API-ja: {response.status_code}")
+            posalji_telegram_poruku(f"Greška pri dohvaćanju utakmica: {response.status_code}")
             return
             
         data = response.json()
         matches = data.get("matches", [])
         
         if not matches:
-            posalji_telegram_poruku("🤖 *Nogometni Bot*\n\nDanas nema pronađenih utakmica u sustavu besplatnog API-ja.")
+            posalji_telegram_poruku("🤖 *Nogometni Bot*\n\nNema pronađenih utakmica za danas i sutra.")
             return
             
-        izvjestaj = "⚽ *DANAŠNJE ANALIZE UTAKMICA* ⚽\n\n"
+        izvjestaj = "⚽ *ANALIZA: DANAS I SUTRA* ⚽\n\n"
         
         brojac = 0
         for match in matches:
-            if brojac >= 5: # Ograničavamo na 5 utakmica da poruka ne bude predugačka
+            if brojac >= 6: # Ograničenje na 6 utakmica da poruka bude pregledna
                 break
                 
             home_team = match['homeTeam']['name']
             away_team = match['awayTeam']['name']
+            utc_date = match['utcDate'][:10] # Prikazuje datum utakmice
             
-            # Simulacija forme na osnovu pozicije/imena za demo
             rezultati = izracunaj_sve_opcije(1.5, 1.3)
             
+            izvjestaj += f"📅 *Datum: {utc_date}*\n"
             izvjestaj += f"🏆 *{home_team} vs {away_team}*\n"
             izvjestaj += f"• 1X2: [ 1: {rezultati['1']}% | X: {rezultati['X']}% | 2: {rezultati['2']}% ]\n"
-            izvjestaj += f"• Dupla šansa: [ 1X: {rezultati['1X']}% | X2: {rezultati['X2']}% ]\n"
-            izvjestaj += f"• Golovi: [ Više 2.5: {rezultati['Over_2_5']}% | Manje 2.5: {rezultati['Under_2_5']}% ]\n\n"
+            izvjestaj += f"• Golovi: [ Više 2.5: {rezultati['Over_2_5']}% ]\n\n"
             brojac += 1
             
         posalji_telegram_poruku(izvjestaj)
         
     except Exception as e:
-        posalji_telegram_poruku(f"Došlo je do greške u skripti: {str(e)}")
+        posalji_telegram_poruku(f"Greška u skripti: {str(e)}")
 
 if __name__ == "__main__":
     dohvati_utakmice_i_analiziraj()
