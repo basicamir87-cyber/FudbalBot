@@ -2,7 +2,7 @@ name: Pokreni Nogometnog Bota
 
 on:
   schedule:
-    - cron: '0 8 * * *' # Pokreće se svaki dan u 08:00 UTC
+    - cron: '0 */2 * * *' # Pokreće se svaki dan u 08:00 UTC
   workflow_dispatch: # Omogućava vam i ručno pokretanje na gumb kad god poželite
 
 jobs:
