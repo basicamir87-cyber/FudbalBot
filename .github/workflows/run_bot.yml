@@ -1,0 +1,29 @@
+name: Pokreni Nogometnog Bota
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # Pokreće se svaki dan u 08:00 UTC
+  workflow_dispatch: # Omogućava vam i ručno pokretanje na gumb kad god poželite
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Preuzmi kod
+        uses: actions/checkout@v4
+
+      - name: Postavi Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instaliraj biblioteke
+        run: |
+          pip install requests numpy scipy
+
+      - name: Pokreni skriptu
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
+        run: |
+          python bot.py
